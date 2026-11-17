@@ -21,8 +21,8 @@ export async function createActivity(input: unknown) {
   const { userId, teamId, type, minutes } = input;
   if (!isObjectId(userId) || !isObjectId(teamId)) throw badRequest('Valid userId and teamId are required');
   if (typeof type !== 'string' || !type.trim()) throw badRequest('Activity type is required');
-  if (typeof minutes !== 'number' || !Number.isFinite(minutes) || minutes < 1) {
-    throw badRequest('Minutes must be a positive number');
+  if (typeof minutes !== 'number' || !Number.isInteger(minutes) || minutes < 1) {
+    throw badRequest('Minutes must be a positive whole number');
   }
 
   const [user, team] = await Promise.all([User.findById(userId), Team.findById(teamId)]);
@@ -34,7 +34,7 @@ export async function createActivity(input: unknown) {
       team: team._id,
       type: type.trim(),
       minutes,
-      points: Math.round(minutes),
+      points: minutes,
       occurredAt: new Date(),
     });
   } catch (error) {
@@ -53,17 +53,26 @@ export async function createTeam(input: unknown) {
   if (typeof name !== 'string' || !name.trim()) throw badRequest('Team name is required');
   if (typeof mascot !== 'string' || !mascot.trim()) throw badRequest('Team mascot is required');
 
-  const memberIds = input.members ?? [];
+  const memberIds = input.members === undefined ? [] : input.members;
   if (!Array.isArray(memberIds) || !memberIds.every(isObjectId)) {
     throw badRequest('Team members must be valid user IDs');
   }
-  const uniqueMemberIds = [...new Set(memberIds)];
+  const uniqueMemberIds = [...new Set(memberIds.map((id) => id.toLowerCase()))];
   const users = await User.find({ _id: { $in: uniqueMemberIds } });
   if (users.length !== uniqueMemberIds.length) throw badRequest('Every team member must exist');
 
   try {
     const team = await Team.create({ name: name.trim(), mascot: mascot.trim(), members: uniqueMemberIds });
     if (uniqueMemberIds.length) {
+      const previousTeamIds = users
+        .map((user) => user.team?.toString())
+        .filter((id): id is string => Boolean(id));
+      if (previousTeamIds.length) {
+        await Team.updateMany(
+          { _id: { $in: previousTeamIds } },
+          { $pull: { members: { $in: uniqueMemberIds } } },
+        );
+      }
       await User.updateMany({ _id: { $in: uniqueMemberIds } }, { $set: { team: team._id } });
     }
     return team;
@@ -102,7 +111,7 @@ export async function suggestWorkouts(userEmail: string) {
     return normalized;
   });
   const preferredFocus = [user.fitnessGoal.toLowerCase(), ...activityFocus];
-  const orderedWorkouts = [...workouts].sort((left, right) => {
+  const orderedWorkouts = workouts.filter(({ focus }) => preferredFocus.includes(focus.toLowerCase())).sort((left, right) => {
     const leftIndex = preferredFocus.indexOf(left.focus.toLowerCase());
     const rightIndex = preferredFocus.indexOf(right.focus.toLowerCase());
     return (leftIndex < 0 ? Number.MAX_SAFE_INTEGER : leftIndex) -
@@ -114,7 +123,7 @@ export async function suggestWorkouts(userEmail: string) {
       ? `Matches your ${user.fitnessGoal} fitness goal`
       : activityFocus.includes(focus)
         ? `Builds on your recent ${focus} activity`
-        : `A balanced workout to support your ${user.fitnessGoal} goal`;
+        : `Builds on your recent ${focus} activity`;
     return { ...workout, reason };
   });
 }

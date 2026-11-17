@@ -28,19 +28,17 @@ OctoFit Tracker is a three-tier application for a school fitness program. The st
 
 ## Implementation decisions
 
-Record your plan here before editing code.
-
-- Presentation tier decision:
-- Logic tier decision:
-- Data tier decision:
-- Activity tracking approach:
-- Team management approach:
-- Leaderboard approach:
-- Workout suggestions approach:
+- Presentation tier decision: React route components load data through the shared API client and provide accessible loading, empty, error, and success states.
+- Logic tier decision: Express routes delegate validation and business behavior to service functions, which return deliberate 4xx responses for invalid inputs.
+- Data tier decision: Mongoose schemas enforce required fields and sensible values; the seed script uses stable upserts without clearing user data.
+- Activity tracking approach: Verify user and team IDs exist, store positive whole minutes, award one point per minute, and timestamp each activity.
+- Team management approach: Create named teams with optional existing member IDs and synchronize those members' team references.
+- Leaderboard approach: Sum activity points by team, include teams with no activities, sort by score, and assign 1-based ranks.
+- Workout suggestions approach: Match the user's goal and recent activity to workout focus, explain each suggestion, and return 404 for an unknown email.
 
 ## Test plan
 
-Record the commands you run and what each failure means.
+Run the commands below to validate each tier. Backend contract tests require a MongoDB binary for `mongodb-memory-server`; a download failure means the runner cannot reach `fastdl.mongodb.org`, not that a contract assertion failed.
 
 - Data-tier command: `npm run test:data --prefix octofit-tracker/backend`
 - API command: `npm run test:api --prefix octofit-tracker/backend`

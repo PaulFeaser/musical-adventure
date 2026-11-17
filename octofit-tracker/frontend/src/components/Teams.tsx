@@ -7,6 +7,7 @@ export default function Teams() {
   const [teams, setTeams] = useState<Team[]>([]);
   const [name, setName] = useState('');
   const [mascot, setMascot] = useState('');
+  const [memberIds, setMemberIds] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -33,9 +34,14 @@ export default function Teams() {
     setSaving(true);
     setError('');
     try {
-      await postJson('/api/teams', { name, mascot });
+      await postJson('/api/teams', {
+        name,
+        mascot,
+        members: memberIds.split(',').map((id) => id.trim()).filter(Boolean),
+      });
       setName('');
       setMascot('');
+      setMemberIds('');
       await loadTeams();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : 'Unable to create team.');
@@ -51,8 +57,9 @@ export default function Teams() {
     <form className="card card-body mb-4" onSubmit={handleSubmit}>
       <h3 className="h5">Create a team</h3>
       <div className="row g-3">
-        <div className="col-md-5"><label className="form-label" htmlFor="team-name">Team name</label><input id="team-name" className="form-control" value={name} onChange={(event) => setName(event.target.value)} required /></div>
-        <div className="col-md-5"><label className="form-label" htmlFor="team-mascot">Mascot</label><input id="team-mascot" className="form-control" value={mascot} onChange={(event) => setMascot(event.target.value)} required /></div>
+        <div className="col-md-3"><label className="form-label" htmlFor="team-name">Team name</label><input id="team-name" className="form-control" value={name} onChange={(event) => setName(event.target.value)} required /></div>
+        <div className="col-md-3"><label className="form-label" htmlFor="team-mascot">Mascot</label><input id="team-mascot" className="form-control" value={mascot} onChange={(event) => setMascot(event.target.value)} required /></div>
+        <div className="col-md-4"><label className="form-label" htmlFor="team-members">Student IDs (comma-separated, optional)</label><input id="team-members" className="form-control" value={memberIds} onChange={(event) => setMemberIds(event.target.value)} /></div>
         <div className="col-md-2 d-flex align-items-end"><button className="btn btn-primary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Create team'}</button></div>
       </div>
     </form>
