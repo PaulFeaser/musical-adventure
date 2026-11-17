@@ -30,13 +30,13 @@ OctoFit Tracker is a three-tier application for a school fitness program. The st
 
 Record your plan here before editing code.
 
-- Presentation tier decision:
-- Logic tier decision:
-- Data tier decision:
-- Activity tracking approach:
-- Team management approach:
-- Leaderboard approach:
-- Workout suggestions approach:
+- Presentation tier decision: Keep the existing routes and shared API client; load each page with a shared request-state hook and accessible loading, empty, success, and error content.
+- Logic tier decision: Keep HTTP handling in routes, request validation and business behavior in services, and translate schema validation failures into deliberate 400 responses.
+- Data tier decision: Require meaningful schema fields and positive durations; preserve the existing non-destructive, idempotent seed script.
+- Activity tracking approach: Validate input types and existing user/team IDs before saving; award one point per minute and record the server creation time.
+- Team management approach: Persist validated names, mascots, and existing member IDs, defaulting omitted members to an empty array.
+- Leaderboard approach: Sum activity points by team, order descending with a stable name/ID tie-break, and assign sequential 1-based ranks.
+- Workout suggestions approach: Use the latest ten activities to identify a dominant focus, falling back to the user's goal; prioritize matching workouts and explain each recommendation. Return 404 for unknown users.
 
 ## Test plan
 
@@ -47,3 +47,16 @@ Record the commands you run and what each failure means.
 - Frontend command: `npm test --prefix octofit-tracker/frontend`
 - Backend build command: `npm run build --prefix octofit-tracker/backend`
 - Frontend build command: `npm run build --prefix octofit-tracker/frontend`
+
+### Initial validation
+
+- Data-tier command: 4 failed, 1 passed. Required schema fields were missing; the seed preservation/idempotence test passed.
+- API command: 4 failed. Creation returned 501, leaderboard returned an empty placeholder, and suggestions ignored the user and omitted reasons.
+- Frontend command: 15 failed. Pages did not fetch/render API data or expose working loading, empty, and error states.
+- Backend and frontend build commands: both passed.
+
+### Final validation
+
+- Re-ran all five test-plan commands successfully: 5 data tests, 4 API tests, and 15 frontend tests passed; both builds passed.
+- Additional regression command: `npm test --prefix octofit-tracker/backend -- tests/api.edge.test.ts` covers invalid activity values, server-owned points/dates, member validation/defaults, and goal/recent-activity recommendations.
+- During implementation, the backend build identified an object-narrowing error; an assertion guard now validates request objects without casts.
